@@ -105,7 +105,10 @@ export class IIPHandler implements IOscHandler, IResetHandler {
       return true;
     }
 
-    const blob = new Blob([this._dec.data8], { type: this._metrics.mime });
+    // TS 5.9 typed arrays may be backed by ArrayBufferLike.
+    // BlobPart requires views backed by ArrayBuffer.
+    const safeData = new Uint8Array(this._dec.data8);
+    const blob = new Blob([safeData], { type: this._metrics.mime });
     this._dec.release();
 
     if (!window.createImageBitmap) {

@@ -4,11 +4,13 @@
  */
 
 import { assert } from 'chai';
-import { MockViewport, MockCompositionHelper, MockRenderer, TestTerminal } from 'browser/TestUtils.test';
+import { MockViewport, MockCompositionHelper, MockMouseService, MockRenderer, MockRenderService, TestTerminal } from 'browser/TestUtils.test';
+import { CompositionHelper } from 'browser/input/CompositionHelper';
 import { DEFAULT_ATTR_DATA } from 'common/buffer/BufferLine';
 import { CellData } from 'common/buffer/CellData';
-import { MockUnicodeService } from 'common/TestUtils.test';
-import { IMarker, ScrollSource } from 'common/Types';
+import { C0 } from 'common/data/EscapeSequences';
+import { MockBufferService, MockOptionsService, MockUnicodeService } from 'common/TestUtils.test';
+import { CoreMouseAction, CoreMouseButton, IMarker, ScrollSource } from 'common/Types';
 import { ICoreService } from 'common/services/Services';
 
 const INIT_COLS = 80;
@@ -173,6 +175,77 @@ describe('Terminal', () => {
       term.reset();
       assert.equal(term.keyDown(evKeyDown), false);
       assert.equal(term.keyPress(evKeyPress), false);
+    });
+  });
+
+  describe('touch to mouse wheel conversion', () => {
+    beforeEach(() => {
+      (term as any)._renderService = new MockRenderService();
+      (term as any)._renderService.dimensions.css.cell.height = 10;
+      term.screenElement = {} as HTMLElement;
+      (term as any)._mouseService = new MockMouseService();
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 4, row: 5, x: 64, y: 96 });
+    });
+
+    it('should convert touchmove to wheel steps using row height accumulation without burst', () => {
+      const events: any[] = [];
+      (term.coreMouseService as any).triggerMouseEvent = (e: any) => {
+        events.push(e);
+        return true;
+      };
+      (term as any)._handleMouseModeTouchStart({
+        touches: [{ pageY: 100 }]
+      } as any as TouchEvent);
+      const firstMoveHandled = (term as any)._handleMouseModeTouchMove({
+        touches: [{ pageY: 85, clientX: 10, clientY: 20 }]
+      } as any as TouchEvent);
+      const secondMoveHandled = (term as any)._handleMouseModeTouchMove({
+        touches: [{ pageY: 63, clientX: 10, clientY: 20 }]
+      } as any as TouchEvent);
+      const thirdMoveHandled = (term as any)._handleMouseModeTouchMove({
+        touches: [{ pageY: 58, clientX: 10, clientY: 20 }]
+      } as any as TouchEvent);
+
+      assert.equal(firstMoveHandled, true);
+      assert.equal(secondMoveHandled, true);
+      assert.equal(thirdMoveHandled, true);
+      assert.equal(events.length, 3);
+      assert.deepEqual(events.map(e => e.action), [CoreMouseAction.DOWN, CoreMouseAction.DOWN, CoreMouseAction.DOWN]);
+      assert.deepEqual(events.map(e => e.button), [CoreMouseButton.WHEEL, CoreMouseButton.WHEEL, CoreMouseButton.WHEEL]);
+    });
+
+    it('should ignore non-single touch gestures', () => {
+      let calls = 0;
+      (term.coreMouseService as any).triggerMouseEvent = () => {
+        calls++;
+        return true;
+      };
+      (term as any)._handleMouseModeTouchStart({
+        touches: [{ pageY: 100 }, { pageY: 90 }]
+      } as any as TouchEvent);
+      const handled = (term as any)._handleMouseModeTouchMove({
+        touches: [{ pageY: 70, clientX: 10, clientY: 20 }]
+      } as any as TouchEvent);
+
+      assert.equal(handled, false);
+      assert.equal(calls, 0);
+    });
+
+    it('should keep strict behavior when protocol rejects wheel events', () => {
+      let calls = 0;
+      (term.coreMouseService as any).triggerMouseEvent = () => {
+        calls++;
+        return false;
+      };
+      (term as any)._handleMouseModeTouchStart({
+        touches: [{ pageY: 100 }]
+      } as any as TouchEvent);
+      const handled = (term as any)._handleMouseModeTouchMove({
+        touches: [{ pageY: 70, clientX: 10, clientY: 20 }]
+      } as any as TouchEvent);
+
+      assert.equal(calls, 1);
+      assert.equal(handled, false);
     });
   });
 

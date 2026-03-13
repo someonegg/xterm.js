@@ -77,6 +77,8 @@ export class Terminal extends CoreTerminal implements ITerminal {
 
   private _customKeyEventHandler: CustomKeyEventHandler | undefined;
   private _customWheelEventHandler: CustomWheelEventHandler | undefined;
+  private _lastTouchYForMouseReports: number | undefined;
+  private _touchWheelRemainder: number = 0;
 
   // Browser services
   private _decorationService: DecorationService;
@@ -833,17 +835,78 @@ export class Terminal extends CoreTerminal implements ITerminal {
     }, { passive: false }));
 
     this.register(addDisposableDomListener(el, 'touchstart', (ev: TouchEvent) => {
-      if (this.coreMouseService.areMouseEventsActive) return;
+      if (this.coreMouseService.areMouseEventsActive) {
+        this._handleMouseModeTouchStart(ev);
+        return;
+      }
       this.viewport!.handleTouchStart(ev);
       return this.cancel(ev);
     }, { passive: true }));
 
     this.register(addDisposableDomListener(el, 'touchmove', (ev: TouchEvent) => {
-      if (this.coreMouseService.areMouseEventsActive) return;
+      if (this.coreMouseService.areMouseEventsActive) {
+        if (this._handleMouseModeTouchMove(ev)) {
+          return this.cancel(ev);
+        }
+        return;
+      }
       if (!this.viewport!.handleTouchMove(ev)) {
         return this.cancel(ev);
       }
     }, { passive: false }));
+  }
+
+  private _handleMouseModeTouchStart(ev: TouchEvent): void {
+    if (ev.touches.length !== 1) {
+      this._lastTouchYForMouseReports = undefined;
+      this._touchWheelRemainder = 0;
+      return;
+    }
+    this._lastTouchYForMouseReports = ev.touches[0].pageY;
+    this._touchWheelRemainder = 0;
+  }
+
+  private _handleMouseModeTouchMove(ev: TouchEvent): boolean {
+    if (ev.touches.length !== 1 || this._lastTouchYForMouseReports === undefined) {
+      return false;
+    }
+    const touch = ev.touches[0];
+    const deltaY = this._lastTouchYForMouseReports - touch.pageY;
+    this._lastTouchYForMouseReports = touch.pageY;
+    if (deltaY === 0) {
+      return false;
+    }
+    const rowHeight = this._renderService?.dimensions.css.cell.height ?? 0;
+    if (rowHeight <= 0) {
+      return false;
+    }
+    this._touchWheelRemainder += deltaY;
+    const stepCount = Math.floor(Math.abs(this._touchWheelRemainder) / rowHeight);
+    if (stepCount === 0) {
+      return false;
+    }
+    const pos = this._mouseService!.getMouseReportCoords({
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    } as MouseEvent, this.screenElement!);
+    const direction = this._touchWheelRemainder > 0 ? 1 : -1;
+    // Emit at most one wheel step per touchmove to avoid bursty jumps.
+    this._touchWheelRemainder -= direction * rowHeight;
+    if (!pos) {
+      return false;
+    }
+    const action = direction > 0 ? CoreMouseAction.DOWN : CoreMouseAction.UP;
+    return this.coreMouseService.triggerMouseEvent({
+      col: pos.col,
+      row: pos.row,
+      x: pos.x,
+      y: pos.y,
+      button: CoreMouseButton.WHEEL,
+      action,
+      ctrl: false,
+      alt: false,
+      shift: false
+    });
   }
 
 

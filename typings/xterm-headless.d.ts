@@ -129,6 +129,12 @@ declare module '@xterm/headless' {
     macOptionClickForcesSelection?: boolean;
 
     /**
+     * Whether to always force normal selection behavior, regardless of
+     * whether the terminal is in mouse events mode.
+     */
+    forceSelection?: boolean;
+
+    /**
      * The minimum contrast ratio for text in the terminal, setting this will
      * change the foreground color dynamically depending on whether the contrast
      * ratio is met. Example values:

@@ -233,6 +233,7 @@ export interface ITerminalOptions {
   logger?: ILogger | null;
   macOptionIsMeta?: boolean;
   macOptionClickForcesSelection?: boolean;
+  forceSelection?: boolean;
   minimumContrastRatio?: number;
   rescaleOverlappingGlyphs?: boolean;
   rightClickSelectsWord?: boolean;

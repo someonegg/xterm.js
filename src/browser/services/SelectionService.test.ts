@@ -11,6 +11,7 @@ import { MockBufferService, MockOptionsService, MockCoreService } from 'common/T
 import { BufferLine } from 'common/buffer/BufferLine';
 import { IBufferService, IOptionsService } from 'common/services/Services';
 import { MockCoreBrowserService, MockMouseService, MockRenderService } from 'browser/TestUtils.test';
+import * as Browser from 'common/Platform';
 import { CellData } from 'common/buffer/CellData';
 import { IBuffer } from 'common/buffer/Types';
 import { IRenderService } from 'browser/services/Services';
@@ -429,6 +430,27 @@ describe('SelectionService', () => {
     });
   });
 
+  describe('shouldForceSelection', () => {
+    it('should always force selection when forceSelection is enabled', () => {
+      optionsService.rawOptions.forceSelection = true;
+      const event = {
+        altKey: false,
+        shiftKey: false
+      } as MouseEvent;
+      assert.isTrue(selectionService.shouldForceSelection(event));
+    });
+
+    it('should preserve existing behavior when forceSelection is disabled', () => {
+      optionsService.rawOptions.forceSelection = false;
+      optionsService.rawOptions.macOptionClickForcesSelection = true;
+      const event = {
+        altKey: Browser.isMac,
+        shiftKey: !Browser.isMac
+      } as MouseEvent;
+      assert.isTrue(selectionService.shouldForceSelection(event));
+    });
+  });
+
   describe('column selection', () => {
     it('should select a column of text', () => {
       buffer.lines.length = 3;
@@ -497,4 +519,3 @@ describe('SelectionService', () => {
     });
   });
 });
-

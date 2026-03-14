@@ -59,6 +59,9 @@ import { WindowsOptionsReportType } from '../common/InputHandler';
 import { AccessibilityManager } from './AccessibilityManager';
 import { LinkProviderService } from 'browser/services/LinkProviderService';
 
+const FOCUS_ON_MOUSE_DOWN_CURSOR_ROW_RADIUS = 2;
+const FOCUS_ON_MOUSE_DOWN_CURSOR_COL_RADIUS = 20;
+
 export class Terminal extends CoreTerminal implements ITerminal {
   public textarea: HTMLTextAreaElement | undefined;
   public element: HTMLElement | undefined;
@@ -774,7 +777,9 @@ export class Terminal extends CoreTerminal implements ITerminal {
      */
     this.register(addDisposableDomListener(el, 'mousedown', (ev: MouseEvent) => {
       ev.preventDefault();
-      this.focus();
+      if (this._shouldFocusOnMouseDown(ev)) {
+        this.focus();
+      }
 
       // Don't send the mouse button to the pty if mouse events are disabled or
       // if the selection manager is having selection forced (ie. a modifier is
@@ -854,6 +859,23 @@ export class Terminal extends CoreTerminal implements ITerminal {
         return this.cancel(ev);
       }
     }, { passive: false }));
+  }
+
+  private _shouldFocusOnMouseDown(ev: MouseEvent): boolean {
+    if (this.optionsService.rawOptions.focusOnMouseDown === 'always') {
+      return true;
+    }
+    if (ev.button !== 0) {
+      return false;
+    }
+    const pos = this._mouseService?.getMouseReportCoords(ev, this.screenElement!);
+    if (!pos) {
+      return false;
+    }
+    const cursorViewportRow = this.buffer.ybase + this.buffer.y - this.buffer.ydisp;
+    const rowDiff = Math.abs(pos.row - cursorViewportRow);
+    const colDiff = Math.abs(pos.col - this.buffer.x);
+    return rowDiff <= FOCUS_ON_MOUSE_DOWN_CURSOR_ROW_RADIUS && colDiff <= FOCUS_ON_MOUSE_DOWN_CURSOR_COL_RADIUS;
   }
 
   private _handleMouseModeTouchStart(ev: TouchEvent): void {

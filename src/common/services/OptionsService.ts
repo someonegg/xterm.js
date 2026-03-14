@@ -10,6 +10,7 @@ import { CursorStyle, IDisposable } from 'common/Types';
 import { FontWeight, IOptionsService, ITerminalOptions } from 'common/services/Services';
 
 export const DEFAULT_OPTIONS: Readonly<Required<ITerminalOptions>> = {
+  focusOnMouseDown: 'always',
   cols: 80,
   rows: 24,
   cursorBlink: false,
@@ -147,6 +148,14 @@ export class OptionsService extends Disposable implements IOptionsService {
 
   private _sanitizeAndValidateOption(key: string, value: any): any {
     switch (key) {
+      case 'focusOnMouseDown':
+        if (!value) {
+          value = DEFAULT_OPTIONS[key];
+        }
+        if (value !== 'always' && value !== 'cursor') {
+          throw new Error(`"${value}" is not a valid value for ${key}`);
+        }
+        break;
       case 'cursorStyle':
         if (!value) {
           value = DEFAULT_OPTIONS[key];

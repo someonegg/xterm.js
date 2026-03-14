@@ -71,6 +71,18 @@ describe('OptionsService', () => {
       service.options.fontWeight = 'bold700' as any;
       assert.equal(service.options.fontWeight, DEFAULT_OPTIONS.fontWeight, 'Wrong string literals should be reset to default');
     });
+
+    it('applies valid focusOnMouseDown values', () => {
+      service.options.focusOnMouseDown = 'cursor';
+      assert.equal(service.options.focusOnMouseDown, 'cursor');
+      service.options.focusOnMouseDown = 'always';
+      assert.equal(service.options.focusOnMouseDown, 'always');
+    });
+
+    it('throws on invalid focusOnMouseDown values', () => {
+      assert.throws(() => service.options.focusOnMouseDown = 'invalid' as any);
+      assert.throws(() => service.options.focusOnMouseDown = 'cursorLine' as any);
+    });
   });
   describe('onOptionChange', () => {
     let service: OptionsService;

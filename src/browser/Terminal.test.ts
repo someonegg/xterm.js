@@ -612,6 +612,46 @@ describe('Terminal', () => {
     });
   });
 
+  describe('focusOnMouseDown', () => {
+    beforeEach(() => {
+      term.screenElement = {} as HTMLElement;
+      (term as any)._mouseService = new MockMouseService();
+      term.buffer.ybase = 20;
+      term.buffer.y = 5;
+      term.buffer.ydisp = 20;
+      term.buffer.x = 30;
+    });
+
+    it('should always focus on mousedown when set to always', () => {
+      term.options.focusOnMouseDown = 'always';
+      (term as any)._mouseService.getMouseReportCoords = () => undefined;
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 2 } as MouseEvent), true);
+    });
+
+    it('should focus only when left click is near cursor when set to cursor', () => {
+      term.options.focusOnMouseDown = 'cursor';
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 30, row: 3, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 0 } as MouseEvent), true);
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 20, row: 5, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 0 } as MouseEvent), true);
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 10, row: 5, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 0 } as MouseEvent), true);
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 9, row: 5, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 0 } as MouseEvent), false);
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 30, row: 2, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 0 } as MouseEvent), false);
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 9, row: 3, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 0 } as MouseEvent), false);
+    });
+
+    it('should not focus for non-left click when set to cursor', () => {
+      term.options.focusOnMouseDown = 'cursor';
+      (term as any)._mouseService.getMouseReportCoords = () => ({ col: 30, row: 5, x: 0, y: 0 });
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 1 } as MouseEvent), false);
+      assert.equal((term as any)._shouldFocusOnMouseDown({ button: 2 } as MouseEvent), false);
+    });
+  });
+
   describe('Third level shift', () => {
     let evKeyDown: any;
     let evKeyPress: any;

@@ -40,6 +40,18 @@ declare module '@xterm/xterm' {
     allowTransparency?: boolean;
 
     /**
+     * Controls whether a `mousedown` should focus the terminal.
+     *
+     * - `'always'`: Any `mousedown` focuses the terminal.
+     * - `'cursor'`: Only left-clicks close to the cursor focus the terminal.
+     *
+     * When `'cursor'` is set, the click must land within a rectangle around the
+     * cursor (up to 2 rows above/below and 10 columns left/right). The default
+     * is `'always'`.
+     */
+    focusOnMouseDown?: 'always' | 'cursor';
+
+    /**
      * If enabled, alt + click will move the prompt cursor to position
      * underneath the mouse. The default is true.
      */

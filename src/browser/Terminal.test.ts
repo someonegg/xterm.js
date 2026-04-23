@@ -249,6 +249,88 @@ describe('Terminal', () => {
     });
   });
 
+  describe('keyup handling', () => {
+    const create229KeyboardEvent = (type: 'keydown' | 'keyup'): KeyboardEvent => ({
+      type,
+      key: '。',
+      keyCode: 229
+    } as KeyboardEvent);
+
+    const createCompositionHelperStub = (onKeyup: () => void): MockCompositionHelper => {
+      const compositionHelper = new MockCompositionHelper();
+      compositionHelper.keyup = () => onKeyup();
+      return compositionHelper;
+    };
+
+    const setupRealCompositionHelper = (): HTMLTextAreaElement => {
+      const textarea = {
+        value: '',
+        focus: () => {},
+        blur: () => {},
+        style: {
+          left: 0,
+          top: 0
+        }
+      } as any as HTMLTextAreaElement;
+      const compositionView = {
+        classList: {
+          add: () => {},
+          remove: () => {}
+        },
+        getBoundingClientRect: () => ({ width: 0, height: 0 }),
+        style: {
+          left: 0,
+          top: 0
+        },
+        textContent: ''
+      } as any;
+      (term as any).textarea = textarea;
+      (term as any)._compositionHelper = new CompositionHelper(
+        textarea,
+        compositionView,
+        new MockBufferService(10, 5),
+        new MockOptionsService(),
+        term.coreService as any,
+        new MockRenderService()
+      );
+      return textarea;
+    };
+
+    it('should forward keyup event to composition helper', () => {
+      let keyupCalls = 0;
+      (term as any)._compositionHelper = createCompositionHelperStub(() => keyupCalls++);
+
+      term.keyUp(create229KeyboardEvent('keyup'));
+
+      assert.equal(keyupCalls, 1);
+    });
+
+    it('should not forward keyup event when custom keyup handler returns false', () => {
+      let keyupCalls = 0;
+      (term as any)._compositionHelper = createCompositionHelperStub(() => keyupCalls++);
+      term.attachCustomKeyEventHandler(ev => ev.type !== 'keyup');
+
+      term.keyUp(create229KeyboardEvent('keyup'));
+
+      assert.equal(keyupCalls, 0);
+    });
+
+    it('should emit pending keyCode 229 input on keyup when key matches', () => {
+      const calls: string[] = [];
+      (term.coreService as any).triggerDataEvent = (data: string) => calls.push(data);
+      const textarea = setupRealCompositionHelper();
+
+      term.keyDown(create229KeyboardEvent('keydown'));
+      assert.deepEqual(calls, []);
+
+      textarea.value = '。';
+      term.keyUp(create229KeyboardEvent('keyup'));
+
+      assert.deepEqual(calls, ['。']);
+    });
+
+  });
+
   describe('clear', () => {
     it('should clear a buffer equal to rows', () => {
       const promptLine = term.buffer.lines.get(term.buffer.ybase + term.buffer.y);

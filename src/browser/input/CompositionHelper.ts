@@ -105,6 +105,9 @@ export class CompositionHelper {
    * the handler.
    */
   public compositionend(): void {
+    if (!this._isComposing) {
+      return;
+    }
     this._finalizeComposition(true);
   }
 

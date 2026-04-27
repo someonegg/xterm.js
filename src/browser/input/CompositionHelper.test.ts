@@ -249,6 +249,20 @@ describe('CompositionHelper', () => {
       }, 0);
     });
 
+    it('Should ignore duplicate compositionend events', (done) => {
+      compositionHelper.compositionstart();
+      compositionHelper.compositionupdate({ data: '你' });
+      textarea.value = '你';
+      setTimeout(() => {
+        compositionHelper.compositionend();
+        compositionHelper.compositionend();
+        setTimeout(() => {
+          assert.equal(handledText, '你');
+          done();
+        }, 0);
+      }, 0);
+    });
+
     it('Should handle keyCode 229 on keyup when key matches', () => {
       textarea.value = '';
       assert.equal(keydown229('。'), false);
